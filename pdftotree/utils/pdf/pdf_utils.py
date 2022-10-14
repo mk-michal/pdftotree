@@ -126,6 +126,16 @@ class CustomPDFPageAggregator(PDFPageAggregator):
         figures = []
         container: LTContainer = None
         _font = None
+        dummy_bbox = (+INF, +INF, -INF, -INF)
+
+        def _add_container_to_mentions():
+            layout_container = LTLayoutContainer(dummy_bbox)
+            for textline in layout_container.group_objects(
+                    self.laparams, container
+            ):
+                cleaned_textline = _clean_textline(textline)
+                if cleaned_textline is not None:
+                    mentions.append(cleaned_textline)
 
         def processor(m, parent):
             """Convert pdfminer.six's LT* into pdftotree's PDFElems."""
@@ -154,16 +164,9 @@ class CustomPDFPageAggregator(PDFPageAggregator):
                     nonlocal _font
                     nonlocal container
                     font = (m.fontname, m.size)
-                    dummy_bbox = (+INF, +INF, -INF, -INF)
                     if font != _font:
                         if _font is not None:
-                            layout_container = LTLayoutContainer(dummy_bbox)
-                            for textline in layout_container.group_objects(
-                                self.laparams, container
-                            ):
-                                cleaned_textline = _clean_textline(textline)
-                                if cleaned_textline is not None:
-                                    mentions.append(cleaned_textline)
+                            _add_container_to_mentions()
                         container = LTContainer(dummy_bbox)
                         _font = font
                     container.add(m)
@@ -178,6 +181,10 @@ class CustomPDFPageAggregator(PDFPageAggregator):
                     mentions.append(cleaned_textline)
             elif isinstance(m, LTAnno):  # Also include non character annotations
                 chars.append(m)
+
+            # add remaining container at the end of the recursion to mentions as well
+            if not parent:
+                _add_container_to_mentions()
             return
 
         processor(layout, None)
