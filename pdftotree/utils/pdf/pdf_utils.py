@@ -129,13 +129,14 @@ class CustomPDFPageAggregator(PDFPageAggregator):
         dummy_bbox = (+INF, +INF, -INF, -INF)
 
         def _add_container_to_mentions():
-            layout_container = LTLayoutContainer(dummy_bbox)
-            for textline in layout_container.group_objects(
-                    self.laparams, container
-            ):
-                cleaned_textline = _clean_textline(textline)
-                if cleaned_textline is not None:
-                    mentions.append(cleaned_textline)
+            if container:
+                layout_container = LTLayoutContainer(dummy_bbox)
+                for textline in layout_container.group_objects(
+                        self.laparams, container
+                ):
+                    cleaned_textline = _clean_textline(textline)
+                    if cleaned_textline is not None:
+                        mentions.append(cleaned_textline)
 
         def processor(m, parent):
             """Convert pdfminer.six's LT* into pdftotree's PDFElems."""
