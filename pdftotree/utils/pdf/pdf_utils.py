@@ -128,11 +128,11 @@ class CustomPDFPageAggregator(PDFPageAggregator):
         _font = None
         dummy_bbox = (+INF, +INF, -INF, -INF)
 
-        def _add_container_to_mentions():
-            if container:
+        def _add_container_to_mentions(cont):
+            if cont:
                 layout_container = LTLayoutContainer(dummy_bbox)
                 for textline in layout_container.group_objects(
-                        self.laparams, container
+                        self.laparams, cont
                 ):
                     cleaned_textline = _clean_textline(textline)
                     if cleaned_textline is not None:
@@ -167,7 +167,7 @@ class CustomPDFPageAggregator(PDFPageAggregator):
                     font = (m.fontname, m.size)
                     if font != _font:
                         if _font is not None:
-                            _add_container_to_mentions()
+                            _add_container_to_mentions(container)
                         container = LTContainer(dummy_bbox)
                         _font = font
                     container.add(m)
@@ -178,14 +178,22 @@ class CustomPDFPageAggregator(PDFPageAggregator):
                 font_size_counter[font_size] += 1
             elif isinstance(m, LTTextLine):
                 cleaned_textline = _clean_textline(m)
-                if cleaned_textline is not None:
-                    mentions.append(cleaned_textline)
+                container_textline = LTContainer(dummy_bbox)
+                if cleaned_textline:
+                    for char in cleaned_textline:
+                        if isinstance(char, LTAnno):
+                            _add_container_to_mentions(container_textline)
+                            container_textline = LTContainer(dummy_bbox)
+                        else:
+                            container_textline.add(char)
+                    if len(container_textline) > 0:
+                        _add_container_to_mentions(container_textline)
             elif isinstance(m, LTAnno):  # Also include non character annotations
                 chars.append(m)
 
             # add remaining container at the end of the recursion to mentions as well
             if not parent:
-                _add_container_to_mentions()
+                _add_container_to_mentions(container)
             return
 
         processor(layout, None)
